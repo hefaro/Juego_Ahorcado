@@ -13,14 +13,13 @@
             --text: #334155;
             --error: #ef4444; 
             --success: #22c55e; 
+            --warning: #f59e0b;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Contenedores Principales */
         .pantalla { display: none; flex-direction: column; height: 100%; width: 100%; max-width: 500px; margin: 0 auto; background: white; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
         .pantalla.activa { display: flex; }
         
-        /* Pantalla de Inicio */
         #pantalla-inicio { padding: 30px; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; }
         .card { width: 100%; background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
         input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1.1rem; box-sizing: border-box; text-align: center; }
@@ -28,31 +27,32 @@
         button.btn-main:hover { background: var(--accent-hover); }
         button.btn-sec { background: #64748b; }
         
-        /* Encabezado del Juego (Siempre visible) */
         .game-header { background: var(--primary); color: white; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;}
         .word-box { font-size: 2.5rem; letter-spacing: 8px; margin: 10px 0; font-family: monospace; font-weight: bold; color: #38bdf8; }
         .turn-box { font-size: 1.2rem; font-weight: bold; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.1); margin-top: 10px;}
         .mi-turno { background: var(--success); color: white; }
+        .eliminado { background: var(--error) !important; color: white !important; }
 
-        /* Área de contenido intercambiable */
         .game-content { flex-grow: 1; overflow-y: auto; padding: 20px; position: relative; }
         .tab-content { display: none; flex-direction: column; align-items: center; }
         .tab-content.activa { display: flex; }
 
-        /* Pestaña: Tablero */
         #canvas { background: white; border-radius: 10px; border: 2px solid #e2e8f0; margin-bottom: 20px; }
         .player-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
         .player-badge { padding: 8px 15px; background: #e2e8f0; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
         .player-badge.activo { background: var(--accent); color: white; }
+        .player-badge.tachado { text-decoration: line-through; opacity: 0.6; background: #fca5a5; }
 
-        /* Pestaña: Controles */
         .math-box { background: #eff6ff; padding: 20px; border-radius: 12px; text-align: center; width: 100%; box-sizing: border-box; border: 1px solid #bfdbfe; margin-bottom: 15px; }
         .math-pregunta { font-size: 1.2rem; font-weight: bold; color: #1e3a8a; margin-bottom: 15px; }
         .keyboard { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; }
         .k-btn { padding: 12px 5px; border: none; background: #f1f5f9; border-radius: 6px; font-weight: bold; font-size: 1.1rem; cursor: pointer; color: #334155; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .k-btn:disabled { opacity: 0.4; cursor: not-allowed; background: #e2e8f0; }
 
-        /* Navegación Inferior (Tabs) */
+        /* Estilos sección arriesgar */
+        .arriesgar-box { background: #fffbeb; padding: 15px; border-radius: 12px; border: 1px dashed #fbbf24; margin-top: 15px; width: 100%; box-sizing: border-box; text-align: center; }
+        .arriesgar-box input { text-transform: uppercase; font-weight: bold; letter-spacing: 2px; }
+
         .bottom-nav { display: flex; background: white; border-top: 1px solid #e2e8f0; }
         .nav-btn { flex: 1; padding: 15px; background: none; border: none; font-size: 1.1rem; font-weight: bold; color: #64748b; cursor: pointer; border-bottom: 4px solid transparent; }
         .nav-btn.activo { color: var(--accent); border-bottom: 4px solid var(--accent); }
@@ -89,7 +89,7 @@
             
             <div id="vista-tablero" class="tab-content activa">
                 <canvas id="canvas" width="200" height="220"></canvas>
-                <h4 style="margin: 10px 0; color: #64748b;">Equipos Conectados:</h4>
+                <h4 style="margin: 10px 0; color: #64748b;">Equipos:</h4>
                 <div class="player-list" id="contenedor-jugadores"></div>
             </div>
 
@@ -105,6 +105,13 @@
                 <div id="caja-teclado" style="display:none; width: 100%; text-align: center;">
                     <p style="color: var(--success); font-weight: bold; margin-bottom: 15px;">¡Reto Superado! Elige una letra:</p>
                     <div class="keyboard" id="teclado"></div>
+                    
+                    <div class="arriesgar-box">
+                        <p style="margin-top:0; font-size:0.9rem; color:#b45309; font-weight:bold;">¿Ya sabes la palabra? ¡Arriésgate!</p>
+                        <input type="text" id="in-arriesgar" placeholder="Escribe la palabra...">
+                        <button id="btn-arriesgar" class="btn-main" style="background: var(--warning); padding: 10px;">ARRIESGAR PALABRA</button>
+                        <p style="margin-bottom:0; font-size:0.8rem; color:#ef4444;">⚠️ Si fallas, pierdes todos tus turnos.</p>
+                    </div>
                 </div>
 
             </div>
@@ -119,32 +126,67 @@
 
     <script type="module">
         import { ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
-        import { db } from './firebase-config.js'; // Tu configuración original intacta
+        import { db } from './firebase-config.js';
 
         const bancoPalabras = ["POLINOMIO", "HIPOTENUSA", "LOGARITMO", "ESTADISTICA", "GEOMETRIA", "ALGEBRA", "FACTORIZACION", "PENDIENTE", "RADICACION", "TEOREMA"];
         
-        // Retos combinados
         const retos = [
-            {q: "¿Cuánto es la mitad de √64?", a: 4},
-            {q: "Calcula: 5 * 8 + 10", a: 50},
-            {q: "Si tengo 3 docenas, ¿cuántas unidades son?", a: 36},
-            {q: "Calcula el 10% de 500", a: 50},
-            {q: "Resultado de (12 / 4) * 5", a: 15},
-            {q: "Si x + 10 = 30, ¿cuánto vale x?", a: 20},
-            {q: "Si 5x = 25, ¿cuánto vale x?", a: 5},
-            {q: "Resuelve: 2x - 2 = 10", a: 6},
-            {q: "¿Cuántos lados tiene un heptágono?", a: 7},
-            {q: "Suma de los ángulos internos de un triángulo", a: 180},
-            {q: "Área de un cuadrado de lado 5", a: 25},
-            {q: "Promedio de 10, 20 y 30", a: 20},
-            {q: "Moda de: 5, 2, 5, 8, 5", a: 5},
-            {q: "¿Cuántas caras tiene un dado?", a: 6}
+  {q: "¿Cuánto es la mitad de √64?", a: 75},
+    {q: "Calcula: 5 * 8 + 10", a: 50},
+    {q: "Si tengo 3 docenas de huevos, ¿cuántos hay?", a: 36},
+    {q: "Calcula el 10% de 500", a: 50},
+    {q: "Resultado de (12 / 4) * 5", a: 15},
+    {q: "¿Cuál es el número primo después del 5?", a: 7},
+    {q: "Resultado de 100 - (25 * 3)", a: 25},
+    {q: "Calcula: √49 + 3", a: 10},
+    {q: "¿Cuántos minutos hay en un cuarto de hora?", a: 15},
+    {q: "El triple de 15 es...", a: 45},
+
+    // Álgebra Básica (Enfoque razonamiento)
+    {q: "Si x + 10 = 30, ¿cuánto vale x?", a: 20},
+    {q: "Si 5x = 25, ¿cuánto vale x?", a: 5},
+    {q: "Resuelve: 2x - 2 = 10", a: 6},
+    {q: "Si x/2 = 8, ¿cuánto vale x?", a: 16},
+    {q: "Valor de x en: 3x + 1 = 22", a: 7},
+    {q: "Si 10 - x = 4, ¿cuánto vale x?", a: 6},
+    {q: "Calcula x: 4x = 40", a: 10},
+    {q: "Si x + x = 18, ¿cuánto vale x?", a: 9},
+    {q: "Resuelve: x - 5 = 15", a: 20},
+    {q: "Si 2x + 2 = 20, ¿cuánto vale x?", a: 9},
+
+    // Geometría
+    {q: "¿Cuántos lados tiene un heptágono?", a: 7},
+    {q: "Suma de los ángulos internos de un triángulo", a: 180},
+    {q: "Área de un cuadrado de lado 5", a: 25},
+    {q: "Perímetro de un triángulo equilátero de lado 10", a: 30},
+    {q: "¿Cuántos grados mide un ángulo recto?", a: 90},
+    {q: "Lados de un hexágono", a: 6},
+    {q: "Si el radio mide 5, ¿cuánto mide el diámetro?", a: 10},
+    {q: "Base 10 y altura 5, ¿área del rectángulo?", a: 50},
+    {q: "Vértices de un cubo", a: 8},
+    {q: "¿Cuántos grados mide un ángulo llano?", a: 180},
+
+    // Estadística y Lógica
+    {q: "Promedio de 10, 20 y 30", a: 20},
+    {q: "Moda de: 5, 2, 5, 8, 5, 9", a: 5},
+    {q: "Mediana de: 1, 3, 5", a: 3},
+    {q: "Rango de los datos: 2, 10, 15", a: 13},
+    {q: "¿cuántas caras tiene un dado?", a: 6},
+    {q: "Suma de los primeros 4 números naturales (1 al 4)", a: 10},
+    {q: "Si un siglo tiene 100 años, ¿cuántos tiene una década?", a: 10},
+    {q: "Diferencia entre 100 y 72", a: 28},
+    {q: "Mitad de la cuarta parte de 80", a: 10},
+    {q: "Resultado de 7 * 7 - 9", a: 40}
+
         ];
 
         let miSala = "", miEquipo = "", miData = {};
         const ctx = document.getElementById('canvas').getContext('2d');
+        
+        // Banderas para evitar alertas múltiples
+        window.alertaVictoria = false;
+        window.alertaDerrota = false;
 
-        // Función para alternar pestañas (expuesta globalmente)
         window.cambiarPestaña = function(vista) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('activa'));
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('activo'));
@@ -158,7 +200,11 @@
             }
         };
 
-        // CREAR SALA
+        // Función para limpiar texto (quita tildes y pasa a mayúsculas)
+        function limpiarTexto(texto) {
+            return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        }
+
         document.getElementById('btn-crear').onclick = async () => {
             if(!validarInputs()) return;
             try {
@@ -167,7 +213,6 @@
 
                 const palabra = bancoPalabras[Math.floor(Math.random() * bancoPalabras.length)];
                 
-                // Creamos la estructura base e inscribimos al creador como el primer jugador
                 await set(ref(db, `sesiones/${miSala}`), {
                     palabra_actual: palabra,
                     letras_adivinadas: [""],
@@ -175,28 +220,28 @@
                     estado: "jugando",
                     jugadores: { [miEquipo]: true },
                     orden_turnos: [miEquipo],
-                    turno_index: 0
+                    turno_index: 0,
+                    equipos_eliminados: [] // <--- NUEVO
                 });
 
                 entrarAlJuego();
             } catch (error) { alert("Error al crear la sala."); console.error(error); }
         };
 
-        // UNIRSE A SALA
         document.getElementById('btn-unir').onclick = async () => {
             if(!validarInputs()) return;
             try {
                 const snap = await get(ref(db, `sesiones/${miSala}`));
-                if(!snap.exists()) return alert("La sala no existe. Verifica el código o crea una.");
+                if(!snap.exists()) return alert("La sala no existe.");
                 
                 let data = snap.val();
                 let jugadores = data.jugadores || {};
                 
                 if(Object.keys(jugadores).length >= 4) return alert("La sala está llena.");
-                if(jugadores[miEquipo]) return alert("Ese nombre de equipo ya está en uso en esta sala.");
+                if(jugadores[miEquipo]) return alert("Ese nombre de equipo ya está en uso.");
 
                 jugadores[miEquipo] = true;
-                const orden = Object.keys(jugadores).sort(); // Orden alfabético
+                const orden = Object.keys(jugadores).sort();
 
                 await update(ref(db, `sesiones/${miSala}`), { 
                     jugadores: jugadores, 
@@ -204,7 +249,7 @@
                 });
 
                 entrarAlJuego();
-            } catch (error) { alert("Error al unirse."); console.error(error); }
+            } catch (error) { alert("Error al unirse."); }
         };
 
         function validarInputs() {
@@ -218,79 +263,92 @@
             document.getElementById('pantalla-inicio').classList.remove('activa');
             document.getElementById('pantalla-juego').classList.add('activa');
             document.getElementById('lbl-sala').innerText = `SALA: ${miSala.toUpperCase()}`;
-            prepararReto(); // Prepara un reto matemático por si acaso
+            prepararReto(); 
             iniciarEscucha();
         }
 
-        // ESCUCHA EN TIEMPO REAL (FIREBASE)
         function iniciarEscucha() {
             onValue(ref(db, `sesiones/${miSala}`), (snapshot) => {
                 miData = snapshot.val();
                 if(!miData) return;
 
-                // 1. Actualizar Errores y Canvas
                 document.getElementById('lbl-errores').innerText = `Errores: ${miData.errores}/6`;
                 dibujarAhorcado(miData.errores);
 
-                // 2. Actualizar Palabra Oculta
                 let visual = "";
                 for(let l of miData.palabra_actual) visual += (miData.letras_adivinadas.includes(l) ? l : "_") + " ";
                 document.getElementById('display-palabra').innerText = visual;
 
-                // 3. Actualizar Jugadores y Turnos
+                const eliminados = miData.equipos_eliminados || [];
+                const estoyEliminado = eliminados.includes(miEquipo);
+
                 const pCont = document.getElementById('contenedor-jugadores');
                 pCont.innerHTML = "";
                 const listaNombres = miData.orden_turnos || [];
                 const equipoEnTurno = listaNombres[miData.turno_index];
-                const esMiTurno = (equipoEnTurno === miEquipo);
+                const esMiTurno = (equipoEnTurno === miEquipo) && !estoyEliminado;
 
                 listaNombres.forEach((nombre) => {
+                    const isMuerte = eliminados.includes(nombre);
                     const badge = document.createElement('div');
-                    badge.className = `player-badge ${nombre === equipoEnTurno ? 'activo' : ''}`;
+                    badge.className = `player-badge ${nombre === equipoEnTurno && !isMuerte ? 'activo' : ''} ${isMuerte ? 'tachado' : ''}`;
                     badge.innerText = nombre.toUpperCase();
                     pCont.appendChild(badge);
                 });
 
-                // 4. Lógica de UI según el Turno
                 const txtTurno = document.getElementById('display-turno');
-                if (esMiTurno) {
+                if (estoyEliminado) {
+                    txtTurno.innerText = "💀 ESTÁS ELIMINADO";
+                    txtTurno.className = "turn-box eliminado";
+                    document.getElementById('caja-reto').style.display = "none";
+                    document.getElementById('caja-teclado').style.display = "none";
+                } else if (esMiTurno) {
                     txtTurno.innerText = "🎯 ¡ES TU TURNO!";
-                    txtTurno.classList.add('mi-turno');
+                    txtTurno.className = "turn-box mi-turno";
                 } else {
                     txtTurno.innerText = `⏳ Turno de: ${equipoEnTurno}`;
-                    txtTurno.classList.remove('mi-turno');
+                    txtTurno.className = "turn-box";
                 }
                 
-                // Generar el teclado virtual
                 actualizarTeclado(esMiTurno);
 
-                // 5. Condiciones de Victoria/Derrota
+                // Control centralizado de Victoria/Derrota
                 if(!visual.includes("_") && miData.estado === "jugando") {
                     update(ref(db, `sesiones/${miSala}`), { estado: "victoria" });
-                    alert("¡VICTORIA! Han adivinado la palabra.");
                 } else if(miData.errores >= 6 && miData.estado === "jugando") {
                     update(ref(db, `sesiones/${miSala}`), { estado: "derrota" });
-                    alert("AHORCADO ☠️. La palabra era: " + miData.palabra_actual);
+                }
+
+                // Disparar alertas solo una vez
+                if (miData.estado === "victoria" && !window.alertaVictoria) {
+                    window.alertaVictoria = true;
+                    const msg = miData.ganador ? `¡VICTORIA! El equipo ${miData.ganador} se arriesgó y acertó.` : "¡VICTORIA! Han adivinado la palabra letra por letra.";
+                    alert(msg);
+                } else if (miData.estado === "derrota" && !window.alertaDerrota) {
+                    window.alertaDerrota = true;
+                    alert("AHORCADO ☠️ o todos fallaron. La palabra era: " + miData.palabra_actual);
                 }
             });
         }
 
-        // --- LÓGICA MATEMÁTICA Y TECLADO ---
         function prepararReto() {
+            if((miData.equipos_eliminados || []).includes(miEquipo)) return;
+
             const r = retos[Math.floor(Math.random()*retos.length)];
             document.getElementById('txt-pregunta').innerText = r.q;
             document.getElementById('txt-pregunta').dataset.a = r.a;
             document.getElementById('in-ans').value = ""; 
+            document.getElementById('in-arriesgar').value = ""; 
             
-            // Mostrar reto, ocultar teclado
             document.getElementById('caja-reto').style.display = "block";
             document.getElementById('caja-teclado').style.display = "none";
         }
 
         document.getElementById('btn-check').onclick = () => {
-            // Validar que sea mi turno antes de permitir saltar el muro
             const equipoEnTurno = miData.orden_turnos[miData.turno_index];
-            if(equipoEnTurno !== miEquipo) return alert("Espera a que sea el turno de tu equipo.");
+            if(equipoEnTurno !== miEquipo || (miData.equipos_eliminados || []).includes(miEquipo)) {
+                return alert("Espera a que sea el turno de tu equipo.");
+            }
 
             const respuestaUsuario = document.getElementById('in-ans').value;
             const respuestaCorrecta = document.getElementById('txt-pregunta').dataset.a;
@@ -311,22 +369,70 @@
                 const b = document.createElement('button');
                 b.className = "k-btn"; 
                 b.innerText = l;
-                
-                // Desactiva la letra si no es mi turno o ya se jugó
                 b.disabled = !activo || (miData.letras_adivinadas || []).includes(l) || miData.estado !== "jugando";
                 b.onclick = () => enviarLetra(l);
                 cont.appendChild(b);
             });
+            document.getElementById('btn-arriesgar').disabled = !activo || miData.estado !== "jugando";
+            document.getElementById('in-arriesgar').disabled = !activo || miData.estado !== "jugando";
         }
+
+        // LÓGICA DE ARRIESGARSE
+        document.getElementById('btn-arriesgar').onclick = async () => {
+            let intento = limpiarTexto(document.getElementById('in-arriesgar').value);
+            if(!intento) return alert("Escribe una palabra antes de arriesgarte.");
+
+            if(intento === miData.palabra_actual) {
+                // Acierto Inmediato
+                await update(ref(db, `sesiones/${miSala}`), { 
+                    estado: "victoria",
+                    ganador: miEquipo,
+                    letras_adivinadas: miData.palabra_actual.split("") // Revelar la palabra a todos
+                });
+            } else {
+                // Falló: Queda eliminado
+                alert("❌ ¡Palabra incorrecta! Has sido eliminado del juego.");
+                
+                let eliminados = miData.equipos_eliminados || [];
+                eliminados.push(miEquipo);
+
+                // Pasar el turno al siguiente equipo válido
+                let nuevoIndex = miData.turno_index;
+                let intentosSeguridad = 0;
+                do {
+                    nuevoIndex = (nuevoIndex + 1) % miData.orden_turnos.length;
+                    intentosSeguridad++;
+                } while(eliminados.includes(miData.orden_turnos[nuevoIndex]) && intentosSeguridad <= miData.orden_turnos.length);
+
+                let updates = {
+                    equipos_eliminados: eliminados,
+                    turno_index: nuevoIndex
+                };
+
+                // Si se eliminaron a todos, el juego termina
+                if(eliminados.length >= miData.orden_turnos.length) {
+                    updates.estado = "derrota";
+                }
+
+                await update(ref(db, `sesiones/${miSala}`), updates);
+                
+                cambiarPestaña('tablero');
+            }
+        };
 
         async function enviarLetra(l) {
             let acierto = miData.palabra_actual.includes(l);
             let nuevosErrores = miData.errores + (acierto ? 0 : 1);
             let nuevoIndex = miData.turno_index;
             
-            // Si falla, el turno pasa al siguiente equipo
+            // Si falla, buscar el siguiente turno ignorando eliminados
             if(!acierto) {
-                nuevoIndex = (miData.turno_index + 1) % miData.orden_turnos.length;
+                let eliminados = miData.equipos_eliminados || [];
+                let intentosSeguridad = 0;
+                do {
+                    nuevoIndex = (nuevoIndex + 1) % miData.orden_turnos.length;
+                    intentosSeguridad++;
+                } while (eliminados.includes(miData.orden_turnos[nuevoIndex]) && intentosSeguridad <= miData.orden_turnos.length);
             }
 
             await update(ref(db, `sesiones/${miSala}`), {
@@ -335,29 +441,24 @@
                 turno_index: nuevoIndex
             });
             
-            // Volvemos a bloquear el teclado poniéndole un nuevo reto para su próximo turno
             prepararReto();
-            
-            // Si el usuario estaba en controles, lo devolvemos automáticamente a ver el tablero
             cambiarPestaña('tablero'); 
         }
 
-        // --- LÓGICA DEL CANVAS ---
         function dibujarAhorcado(e) {
             ctx.clearRect(0,0,200,220); 
             ctx.strokeStyle = "#334155"; 
             ctx.lineWidth = 4;
             ctx.lineCap = "round";
             
-            // Base siempre visible
             ctx.beginPath(); ctx.moveTo(20,200); ctx.lineTo(180,200); ctx.moveTo(40,200); ctx.lineTo(40,20); ctx.lineTo(120,20); ctx.lineTo(120,40); ctx.stroke();
             
-            if(e>0) { ctx.beginPath(); ctx.arc(120,60,20,0,Math.PI*2); ctx.stroke(); } // Cabeza
-            if(e>1) { ctx.beginPath(); ctx.moveTo(120,80); ctx.lineTo(120,140); ctx.stroke(); } // Cuerpo
-            if(e>2) { ctx.beginPath(); ctx.moveTo(120,95); ctx.lineTo(90,125); ctx.stroke(); } // Brazo Izq
-            if(e>3) { ctx.beginPath(); ctx.moveTo(120,95); ctx.lineTo(150,125); ctx.stroke(); } // Brazo Der
-            if(e>4) { ctx.beginPath(); ctx.moveTo(120,140); ctx.lineTo(95,180); ctx.stroke(); } // Pierna Izq
-            if(e>5) { ctx.beginPath(); ctx.moveTo(120,140); ctx.lineTo(145,180); ctx.stroke(); } // Pierna Der
+            if(e>0) { ctx.beginPath(); ctx.arc(120,60,20,0,Math.PI*2); ctx.stroke(); }
+            if(e>1) { ctx.beginPath(); ctx.moveTo(120,80); ctx.lineTo(120,140); ctx.stroke(); }
+            if(e>2) { ctx.beginPath(); ctx.moveTo(120,95); ctx.lineTo(90,125); ctx.stroke(); }
+            if(e>3) { ctx.beginPath(); ctx.moveTo(120,95); ctx.lineTo(150,125); ctx.stroke(); }
+            if(e>4) { ctx.beginPath(); ctx.moveTo(120,140); ctx.lineTo(95,180); ctx.stroke(); }
+            if(e>5) { ctx.beginPath(); ctx.moveTo(120,140); ctx.lineTo(145,180); ctx.stroke(); }
         }
     </script>
 </body>
