@@ -28,7 +28,10 @@
         button.btn-sec { background: #64748b; }
         
         .game-header { background: var(--primary); color: white; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;}
-        .word-box { font-size: 2.5rem; letter-spacing: 8px; margin: 10px 0; font-family: monospace; font-weight: bold; color: #38bdf8; }
+        
+        /* Ajuste responsivo para la palabra oculta en móviles */
+        .word-box { font-size: clamp(1.2rem, 8vw, 2.5rem); letter-spacing: 4px; margin: 15px 0; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #38bdf8; word-break: break-all; white-space: nowrap; }
+        
         .turn-box { font-size: 1.2rem; font-weight: bold; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.1); margin-top: 10px;}
         .mi-turno { background: var(--success); color: white; }
         .eliminado { background: var(--error) !important; color: white !important; }
@@ -45,11 +48,12 @@
 
         .math-box { background: #eff6ff; padding: 20px; border-radius: 12px; text-align: center; width: 100%; box-sizing: border-box; border: 1px solid #bfdbfe; margin-bottom: 15px; }
         .math-pregunta { font-size: 1.2rem; font-weight: bold; color: #1e3a8a; margin-bottom: 15px; }
-        .keyboard { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; }
-        .k-btn { padding: 12px 5px; border: none; background: #f1f5f9; border-radius: 6px; font-weight: bold; font-size: 1.1rem; cursor: pointer; color: #334155; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        /* Ajuste del teclado para mayor comodidad en pantallas pequeñas */
+        .keyboard { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; }
+        .k-btn { padding: 10px 2px; border: none; background: #f1f5f9; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; color: #334155; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .k-btn:disabled { opacity: 0.4; cursor: not-allowed; background: #e2e8f0; }
 
-        /* Estilos sección arriesgar */
         .arriesgar-box { background: #fffbeb; padding: 15px; border-radius: 12px; border: 1px dashed #fbbf24; margin-top: 15px; width: 100%; box-sizing: border-box; text-align: center; }
         .arriesgar-box input { text-transform: uppercase; font-weight: bold; letter-spacing: 2px; }
 
@@ -62,7 +66,7 @@
 
     <div id="pantalla-inicio" class="pantalla activa">
         <div class="card">
-            <h2 style="color: var(--primary);">Ahorcado Matemático V2</h2>
+            <h2 style="color: var(--primary);">Ahorcado Matemático V3</h2>
             <p style="color: #64748b; margin-bottom: 20px;">I.E. Narciso Cabal</p>
             
             <input type="text" id="in-sala" placeholder="Código de la Sala (ej: 8A)">
@@ -98,7 +102,7 @@
                 <div id="caja-reto" class="math-box">
                     <p style="margin-top:0; font-size:0.9rem; color:#64748b;">Resuelve para desbloquear el teclado</p>
                     <div class="math-pregunta" id="txt-pregunta">--</div>
-                    <input type="number" id="in-ans" placeholder="Tu respuesta numérica">
+                    <input type="number" inputmode="numeric" id="in-ans" placeholder="Tu respuesta numérica">
                     <button id="btn-check" class="btn-main">COMPROBAR</button>
                 </div>
 
@@ -128,64 +132,87 @@
         import { ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
         import { db } from './firebase-config.js';
 
+        // Sistema de Sonido (API nativa, sin audios externos)
+        const sonido = {
+            play(freq, type = 'sine', duration = 0.1) {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            },
+            exito() { this.play(880, 'square', 0.2); },
+            error() { this.play(110, 'sawtooth', 0.3); },
+            victoria() { 
+                this.play(523.25, 'sine', 0.2);
+                setTimeout(() => this.play(659.25, 'sine', 0.2), 150);
+                setTimeout(() => this.play(783.99, 'sine', 0.4), 300);
+            },
+            derrota() {
+                this.play(300, 'sawtooth', 0.3);
+                setTimeout(() => this.play(250, 'sawtooth', 0.4), 300);
+            }
+        };
+
         const bancoPalabras = ["POLINOMIO", "HIPOTENUSA", "LOGARITMO", "ESTADISTICA", "GEOMETRIA", "ALGEBRA", "FACTORIZACION", "PENDIENTE", "RADICACION", "TEOREMA"];
         
-        // version abril 15
-        
         const retos = [
-  {q: "¿Cuánto es la mitad de √64?", a: 75},
-    {q: "Calcula: 5 * 8 + 10", a: 50},
-    {q: "Si tengo 3 docenas de huevos, ¿cuántos hay?", a: 36},
-    {q: "Calcula el 10% de 500", a: 50},
-    {q: "Resultado de (12 / 4) * 5", a: 15},
-    {q: "¿Cuál es el número primo después del 5?", a: 7},
-    {q: "Resultado de 100 - (25 * 3)", a: 25},
-    {q: "Calcula: √49 + 3", a: 10},
-    {q: "¿Cuántos minutos hay en un cuarto de hora?", a: 15},
-    {q: "El triple de 15 es...", a: 45},
+            {q: "¿Cuánto es la mitad de √64?", a: 4}, // Corrección matemática sugerida al reto original que decía 75
+            {q: "Calcula: 5 * 8 + 10", a: 50},
+            {q: "Si tengo 3 docenas de huevos, ¿cuántos hay?", a: 36},
+            {q: "Calcula el 10% de 500", a: 50},
+            {q: "Resultado de (12 / 4) * 5", a: 15},
+            {q: "¿Cuál es el número primo después del 5?", a: 7},
+            {q: "Resultado de 100 - (25 * 3)", a: 25},
+            {q: "Calcula: √49 + 3", a: 10},
+            {q: "¿Cuántos minutos hay en un cuarto de hora?", a: 15},
+            {q: "El triple de 15 es...", a: 45},
 
-    // Álgebra Básica (Enfoque razonamiento)
-    {q: "Si x + 10 = 30, ¿cuánto vale x?", a: 20},
-    {q: "Si 5x = 25, ¿cuánto vale x?", a: 5},
-    {q: "Resuelve: 2x - 2 = 10", a: 6},
-    {q: "Si x/2 = 8, ¿cuánto vale x?", a: 16},
-    {q: "Valor de x en: 3x + 1 = 22", a: 7},
-    {q: "Si 10 - x = 4, ¿cuánto vale x?", a: 6},
-    {q: "Calcula x: 4x = 40", a: 10},
-    {q: "Si x + x = 18, ¿cuánto vale x?", a: 9},
-    {q: "Resuelve: x - 5 = 15", a: 20},
-    {q: "Si 2x + 2 = 20, ¿cuánto vale x?", a: 9},
+            // Álgebra Básica
+            {q: "Si x + 10 = 30, ¿cuánto vale x?", a: 20},
+            {q: "Si 5x = 25, ¿cuánto vale x?", a: 5},
+            {q: "Resuelve: 2x - 2 = 10", a: 6},
+            {q: "Si x/2 = 8, ¿cuánto vale x?", a: 16},
+            {q: "Valor de x en: 3x + 1 = 22", a: 7},
+            {q: "Si 10 - x = 4, ¿cuánto vale x?", a: 6},
+            {q: "Calcula x: 4x = 40", a: 10},
+            {q: "Si x + x = 18, ¿cuánto vale x?", a: 9},
+            {q: "Resuelve: x - 5 = 15", a: 20},
+            {q: "Si 2x + 2 = 20, ¿cuánto vale x?", a: 9},
 
-    // Geometría
-    {q: "¿Cuántos lados tiene un heptágono?", a: 7},
-    {q: "Suma de los ángulos internos de un triángulo", a: 180},
-    {q: "Área de un cuadrado de lado 5", a: 25},
-    {q: "Perímetro de un triángulo equilátero de lado 10", a: 30},
-    {q: "¿Cuántos grados mide un ángulo recto?", a: 90},
-    {q: "Lados de un hexágono", a: 6},
-    {q: "Si el radio mide 5, ¿cuánto mide el diámetro?", a: 10},
-    {q: "Base 10 y altura 5, ¿área del rectángulo?", a: 50},
-    {q: "Vértices de un cubo", a: 8},
-    {q: "¿Cuántos grados mide un ángulo llano?", a: 180},
+            // Geometría
+            {q: "¿Cuántos lados tiene un heptágono?", a: 7},
+            {q: "Suma de los ángulos internos de un triángulo", a: 180},
+            {q: "Área de un cuadrado de lado 5", a: 25},
+            {q: "Perímetro de un triángulo equilátero de lado 10", a: 30},
+            {q: "¿Cuántos grados mide un ángulo recto?", a: 90},
+            {q: "Lados de un hexágono", a: 6},
+            {q: "Si el radio mide 5, ¿cuánto mide el diámetro?", a: 10},
+            {q: "Base 10 y altura 5, ¿área del rectángulo?", a: 50},
+            {q: "Vértices de un cubo", a: 8},
+            {q: "¿Cuántos grados mide un ángulo llano?", a: 180},
 
-    // Estadística y Lógica
-    {q: "Promedio de 10, 20 y 30", a: 20},
-    {q: "Moda de: 5, 2, 5, 8, 5, 9", a: 5},
-    {q: "Mediana de: 1, 3, 5", a: 3},
-    {q: "Rango de los datos: 2, 10, 15", a: 13},
-    {q: "¿cuántas caras tiene un dado?", a: 6},
-    {q: "Suma de los primeros 4 números naturales (1 al 4)", a: 10},
-    {q: "Si un siglo tiene 100 años, ¿cuántos tiene una década?", a: 10},
-    {q: "Diferencia entre 100 y 72", a: 28},
-    {q: "Mitad de la cuarta parte de 80", a: 10},
-    {q: "Resultado de 7 * 7 - 9", a: 40}
-
+            // Estadística y Lógica
+            {q: "Promedio de 10, 20 y 30", a: 20},
+            {q: "Moda de: 5, 2, 5, 8, 5, 9", a: 5},
+            {q: "Mediana de: 1, 3, 5", a: 3},
+            {q: "Rango de los datos: 2, 10, 15", a: 13},
+            {q: "¿cuántas caras tiene un dado?", a: 6},
+            {q: "Suma de los primeros 4 números naturales (1 al 4)", a: 10},
+            {q: "Si un siglo tiene 100 años, ¿cuántos tiene una década?", a: 10},
+            {q: "Diferencia entre 100 y 72", a: 28},
+            {q: "Mitad de la cuarta parte de 80", a: 10},
+            {q: "Resultado de 7 * 7 - 9", a: 40}
         ];
 
         let miSala = "", miEquipo = "", miData = {};
         const ctx = document.getElementById('canvas').getContext('2d');
         
-        // Banderas para evitar alertas múltiples
         window.alertaVictoria = false;
         window.alertaDerrota = false;
 
@@ -202,7 +229,6 @@
             }
         };
 
-        // Función para limpiar texto (quita tildes y pasa a mayúsculas)
         function limpiarTexto(texto) {
             return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
         }
@@ -223,7 +249,7 @@
                     jugadores: { [miEquipo]: true },
                     orden_turnos: [miEquipo],
                     turno_index: 0,
-                    equipos_eliminados: [] // <--- NUEVO
+                    equipos_eliminados: []
                 });
 
                 entrarAlJuego();
@@ -314,21 +340,21 @@
                 
                 actualizarTeclado(esMiTurno);
 
-                // Control centralizado de Victoria/Derrota
                 if(!visual.includes("_") && miData.estado === "jugando") {
                     update(ref(db, `sesiones/${miSala}`), { estado: "victoria" });
                 } else if(miData.errores >= 6 && miData.estado === "jugando") {
                     update(ref(db, `sesiones/${miSala}`), { estado: "derrota" });
                 }
 
-                // Disparar alertas solo una vez
                 if (miData.estado === "victoria" && !window.alertaVictoria) {
                     window.alertaVictoria = true;
+                    sonido.victoria(); // Sonido de victoria
                     const msg = miData.ganador ? `¡VICTORIA! El equipo ${miData.ganador} se arriesgó y acertó.` : "¡VICTORIA! Han adivinado la palabra letra por letra.";
-                    alert(msg);
+                    setTimeout(() => alert(msg), 200);
                 } else if (miData.estado === "derrota" && !window.alertaDerrota) {
                     window.alertaDerrota = true;
-                    alert("AHORCADO ☠️ o todos fallaron. La palabra era: " + miData.palabra_actual);
+                    sonido.derrota(); // Sonido de derrota
+                    setTimeout(() => alert("AHORCADO ☠️ o todos fallaron. La palabra era: " + miData.palabra_actual), 200);
                 }
             });
         }
@@ -356,9 +382,11 @@
             const respuestaCorrecta = document.getElementById('txt-pregunta').dataset.a;
             
             if(respuestaUsuario === respuestaCorrecta) {
+                sonido.exito(); // Efecto de acierto al resolver el problema
                 document.getElementById('caja-reto').style.display = "none";
                 document.getElementById('caja-teclado').style.display = "block";
             } else { 
+                sonido.error(); // Efecto de fallo
                 alert("❌ Incorrecto. Analiza e intenta otro reto."); 
                 prepararReto(); 
             }
@@ -379,26 +407,24 @@
             document.getElementById('in-arriesgar').disabled = !activo || miData.estado !== "jugando";
         }
 
-        // LÓGICA DE ARRIESGARSE
         document.getElementById('btn-arriesgar').onclick = async () => {
             let intento = limpiarTexto(document.getElementById('in-arriesgar').value);
             if(!intento) return alert("Escribe una palabra antes de arriesgarte.");
 
             if(intento === miData.palabra_actual) {
-                // Acierto Inmediato
+                sonido.victoria();
                 await update(ref(db, `sesiones/${miSala}`), { 
                     estado: "victoria",
                     ganador: miEquipo,
-                    letras_adivinadas: miData.palabra_actual.split("") // Revelar la palabra a todos
+                    letras_adivinadas: miData.palabra_actual.split("")
                 });
             } else {
-                // Falló: Queda eliminado
+                sonido.error();
                 alert("❌ ¡Palabra incorrecta! Has sido eliminado del juego.");
                 
                 let eliminados = miData.equipos_eliminados || [];
                 eliminados.push(miEquipo);
 
-                // Pasar el turno al siguiente equipo válido
                 let nuevoIndex = miData.turno_index;
                 let intentosSeguridad = 0;
                 do {
@@ -411,23 +437,26 @@
                     turno_index: nuevoIndex
                 };
 
-                // Si se eliminaron a todos, el juego termina
                 if(eliminados.length >= miData.orden_turnos.length) {
                     updates.estado = "derrota";
                 }
 
                 await update(ref(db, `sesiones/${miSala}`), updates);
-                
                 cambiarPestaña('tablero');
             }
         };
 
         async function enviarLetra(l) {
             let acierto = miData.palabra_actual.includes(l);
+            if(acierto) {
+                sonido.exito();
+            } else {
+                sonido.error();
+            }
+
             let nuevosErrores = miData.errores + (acierto ? 0 : 1);
             let nuevoIndex = miData.turno_index;
             
-            // Si falla, buscar el siguiente turno ignorando eliminados
             if(!acierto) {
                 let eliminados = miData.equipos_eliminados || [];
                 let intentosSeguridad = 0;
