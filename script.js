@@ -20,6 +20,8 @@ const sonido = {
 };
 
 let miSala = "", miEquipo = "", miData = {};
+let retosDisponibles = [];
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
@@ -168,7 +170,17 @@ function render() {
 
 // --- MECÁNICAS DE JUEGO ---
 function prepararReto() {
-    const r = retos[Math.floor(Math.random() * retos.length)];
+    // Si la lista está vacía (al iniciar el juego o si ya respondieron todas), la recargamos
+    if (retosDisponibles.length === 0) {
+        retosDisponibles = [...retos]; 
+    }
+
+    // Seleccionamos un índice al azar de las preguntas que aún quedan
+    const randomIndex = Math.floor(Math.random() * retosDisponibles.length);
+    
+    // .splice() extrae el reto del arreglo, asegurando que no se repita en este ciclo
+    const r = retosDisponibles.splice(randomIndex, 1)[0];
+
     document.getElementById('txt-pregunta').innerText = r.q;
     document.getElementById('txt-pregunta').dataset.a = r.a;
     document.getElementById('in-ans').value = "";
