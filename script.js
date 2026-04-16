@@ -152,6 +152,7 @@ function render() {
         tBox.innerText = `¡VICTORIA! Ganó: ${miData.ganador}`;
         tBox.classList.add("victoria");
         sonido.victoria(); // Suena cada que sincroniza, podrías controlarlo para que suene 1 vez
+        mostrarCertificado(miData.ganador);
     } else if (miData.estado === "derrota") {
         tBox.innerText = `¡DERROTA! La palabra era ${miData.palabra_actual}`;
         tBox.classList.add("derrota");
@@ -293,4 +294,55 @@ function dibujar(e) {
     if(e>3) { ctx.beginPath(); ctx.moveTo(80,75); ctx.lineTo(100,100); ctx.stroke(); } // Brazo R
     if(e>4) { ctx.beginPath(); ctx.moveTo(80,110); ctx.lineTo(60,140); ctx.stroke(); } // Pierna L
     if(e>5) { ctx.beginPath(); ctx.moveTo(80,110); ctx.lineTo(100,140); ctx.stroke(); } // Pierna R
+}
+
+// --- CERTIFICADO DE GANADOR ---
+let certificadoMostrado = false;
+
+function mostrarCertificado(ganador) {
+    if(certificadoMostrado) return; // Evitar mostrar múltiples veces
+    certificadoMostrado = true;
+
+    // Llenar datos del certificado
+    document.getElementById('cert-nombre').innerText = ganador;
+    const hoy = new Date();
+    const fechaFormato = hoy.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('cert-fecha').innerHTML = `Fecha: <strong>${fechaFormato}</strong>`;
+    
+    // Mostrar modal
+    const modal = document.getElementById('modal-certificado');
+    modal.classList.add('activo');
+    
+    // Agregar event listeners si no existen
+    if(!document.getElementById('btn-descargar-cert').onclick) {
+        document.getElementById('btn-descargar-cert').onclick = descargarCertificado;
+    }
+    if(!document.getElementById('btn-cerrar-cert').onclick) {
+        document.getElementById('btn-cerrar-cert').onclick = cerrarCertificado;
+    }
+}
+
+function cerrarCertificado() {
+    const modal = document.getElementById('modal-certificado');
+    modal.classList.remove('activo');
+}
+
+async function descargarCertificado() {
+    // Cargar html2canvas
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    document.head.appendChild(script);
+    
+    script.onload = () => {
+        const certificado = document.getElementById('certificado');
+        html2canvas(certificado, {
+            backgroundColor: null,
+            scale: 2
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `Certificado_${document.getElementById('cert-nombre').innerText}_${new Date().getTime()}.png`;
+            link.click();
+        });
+    };
 }
