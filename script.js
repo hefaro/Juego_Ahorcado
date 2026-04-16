@@ -32,7 +32,6 @@ document.getElementById('btn-crear').onclick = crearSala;
 document.getElementById('btn-unir').onclick = unirseSala;
 document.getElementById('btn-salir').onclick = salirSala;
 document.getElementById('btn-reiniciar').onclick = reiniciarJuego;
-document.getElementById('btn-check').onclick = verificarRetoMatematico;
 document.getElementById('btn-arriesgar').onclick = arriesgarPalabra;
 
 // --- FUNCIONES DE NAVEGACIÓN ---
@@ -183,14 +182,21 @@ function prepararReto() {
     const r = retosDisponibles.splice(randomIndex, 1)[0];
 
     document.getElementById('txt-pregunta').innerText = r.q;
-    document.getElementById('txt-pregunta').dataset.a = r.a;
-    document.getElementById('in-ans').value = "";
+    document.getElementById('txt-pregunta').dataset.correct = r.correctIndex;
+    
+    const opcionesBtns = document.querySelectorAll('.btn-opcion');
+    opcionesBtns.forEach((btn, index) => {
+        btn.innerText = r.opciones[index];
+        btn.onclick = () => verificarRetoMatematico(index);
+    });
+    
     document.getElementById('caja-reto').style.display = "block";
     document.getElementById('caja-teclado').style.display = "none";
 }
 
-function verificarRetoMatematico() {
-    if(document.getElementById('in-ans').value == document.getElementById('txt-pregunta').dataset.a) {
+function verificarRetoMatematico(selectedIndex) {
+    const correctIndex = parseInt(document.getElementById('txt-pregunta').dataset.correct);
+    if(selectedIndex === correctIndex) {
         sonido.exito();
         document.getElementById('caja-reto').style.display = "none";
         document.getElementById('caja-teclado').style.display = "block";

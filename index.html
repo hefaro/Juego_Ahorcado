@@ -40,8 +40,12 @@
             <div id="vista-controles" class="tab-content">
                 <div id="caja-reto" class="math-box">
                     <div id="txt-pregunta" style="font-weight:bold; margin-bottom:10px;">--</div>
-                    <input type="number" inputmode="numeric" id="in-ans" placeholder="Respuesta">
-                    <button id="btn-check" class="btn-main">LISTO</button>
+                    <div id="opciones-reto" style="display: flex; flex-direction: column; gap: 5px;">
+                        <button class="btn-opcion" data-index="0">--</button>
+                        <button class="btn-opcion" data-index="1">--</button>
+                        <button class="btn-opcion" data-index="2">--</button>
+                        <button class="btn-opcion" data-index="3">--</button>
+                    </div>
                 </div>
                 <div id="caja-teclado" style="display:none; width:100%;">
                     <div class="keyboard" id="teclado"></div>
